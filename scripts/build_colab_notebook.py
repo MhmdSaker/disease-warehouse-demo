@@ -147,6 +147,29 @@ pd.read_sql('SELECT dataset_id, dataset_name, domain, fact_table, source_path FR
 pd.read_sql('SELECT * FROM dim_patient_record LIMIT 5', conn)
 """),
 
+        md("""### 6a. Star schema diagram
+
+The engine auto-generates a Mermaid ER diagram every time `build` runs.
+We render it inline below by sending the diagram code to **mermaid.ink** (the
+official Mermaid renderer) and embedding the returned PNG.
+"""),
+
+        code("""import base64, re
+from pathlib import Path
+from IPython.display import Image, Markdown, display
+
+schema_md = Path('disease_warehouse/outputs/star_schema.md').read_text(encoding='utf-8')
+
+# Show the prose part (profile registry, snapshot timestamp, etc.)
+prose = schema_md.split('```mermaid')[0]
+display(Markdown(prose))
+
+# Render every ```mermaid``` block as an inline PNG via mermaid.ink
+for block in re.findall(r'```mermaid\\n(.*?)```', schema_md, re.DOTALL):
+    encoded = base64.urlsafe_b64encode(block.strip().encode('utf-8')).decode('ascii')
+    display(Image(url=f'https://mermaid.ink/img/{encoded}?type=png&bgColor=white'))
+"""),
+
         md("""## 7. Onboarding a NEW disease — UCI Parkinson's voice biomarkers
 
 The Parkinson's dataset has 24 columns of dysphonia features

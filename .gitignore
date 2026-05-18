@@ -24,6 +24,7 @@ Thumbs.db
 # ── Excluded from the GitHub deliverable (kept locally) ──────────────────
 # These belong to the legacy pipeline or are local-only experiments.
 # The disease_warehouse demo repo intentionally ships a focused subset.
+CLAUDE.md
 .claude/
 00_PRESENTATION_READY/
 archive_old_scope/

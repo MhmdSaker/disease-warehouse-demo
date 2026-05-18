@@ -70,9 +70,44 @@ Section 11 of the notebook ("Your turn") walks you through onboarding the
 **UCI Maternal Health Risk** dataset (1,014 rows, obstetrics — a domain not
 yet in the warehouse). Just run the 4 cells in that section in order.
 
-To onboard ANY OTHER CSV:
+### See the LLM's contribution side-by-side
+
+Paste these into new cells in the Colab notebook to **scaffold the same
+dataset twice** — once with deterministic heuristics only, once with Gemini
+enrichment — then diff the two YAML outputs:
+
+```bash
+# 1. BASELINE — heuristics only, no API call
+!python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
+    --name maternal_baseline --no-llm --force
+
+# 2. WITH GEMINI — same input, LLM fills the LOW-confidence gaps
+!python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
+    --name maternal_llm --use-llm --force
+```
+
+Compare the two reports — look at the `decisions: HIGH=.. MEDIUM=.. LOW=..`
+scoreboard at the top of each. The LLM run should have **LOW=0**; the
+baseline will have several columns flagged for human review.
+
+Then diff the two YAMLs to see exactly which fields the LLM filled:
+
+```bash
+!diff disease_warehouse/profiles/maternal_baseline.yaml \
+      disease_warehouse/profiles/maternal_llm.yaml
+```
+
+Finally, build whichever profile you prefer into the warehouse:
+
+```bash
+# Build the LLM-enriched version
+!python -X utf8 -m disease_warehouse build --profile maternal_llm
+```
+
+### Onboard ANY other CSV (your own data, a Kaggle download, anything)
+
 1. Upload your file via Colab's left-sidebar file browser → `datasets/`
-2. Run a scaffold command, replacing the placeholders:
+2. Scaffold it:
    ```bash
    !python -X utf8 -m disease_warehouse scaffold datasets/YOUR_FILE.csv \
        --name your_disease_slug --use-llm --force

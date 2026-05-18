@@ -69,4 +69,3 @@ exports, data dictionary, lineage report, and star-schema markdown.
 ## Documentation
 
 - [`INSTRUCTIONS_FOR_PROFESSOR.md`](INSTRUCTIONS_FOR_PROFESSOR.md) — 5-min Colab walkthrough
-- [`CLAUDE.md`](CLAUDE.md) — full architecture notes and engine internals
