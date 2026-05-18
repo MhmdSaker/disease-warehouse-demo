@@ -1,6 +1,6 @@
 # Disease Warehouse — Profile-Driven Healthcare Data Warehouse
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MhmdSaker/REPO_NAME_PLACEHOLDER/blob/main/disease_warehouse_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MhmdSaker/disease-warehouse-demo/blob/main/disease_warehouse_colab.ipynb)
 
 A **dataset-agnostic** ETL engine that turns any healthcare CSV into a SQLite
 star-schema warehouse — without writing Python. Each disease is onboarded as
