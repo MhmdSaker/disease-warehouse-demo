@@ -14,21 +14,22 @@ LLM-assisted scaffold command.
 
 ---
 
-## 5-minute setup
+## 2-minute setup
 
-1. **Open Colab** — https://colab.research.google.com/
-2. **Upload the notebook** — `File → Upload notebook` → choose `disease_warehouse_colab.ipynb`
-3. **Add your Gemini key as a Colab Secret:**
+1. **Open the notebook in Colab** — click the badge:
+
+   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MhmdSaker/disease-warehouse-demo/blob/main/disease_warehouse_colab.ipynb)
+
+2. **Add your Gemini key as a Colab Secret:**
    - Click the **key icon** in Colab's left sidebar (labelled "Secrets")
    - **+ Add new secret**
    - **Name:** `GEMINI_API_KEY` (case-sensitive)
    - **Value:** paste your key
    - Toggle **Notebook access** ON
-4. **Run All** — `Runtime → Run all`
-5. When the upload prompt appears (~30 seconds in, in section 2), **upload `datamining_project.zip`**
-6. Wait ~3 minutes for the full pipeline to finish
+3. **Run All** — `Runtime → Run all`
+4. Wait ~3 minutes for the full pipeline to finish
 
-That's it.
+That's it. The notebook clones the project from GitHub itself — no manual upload.
 
 ---
 
@@ -98,10 +99,11 @@ No Python changes required — every step is a CLI command driven by the YAML.
 
 ---
 
-## Files in this delivery
+## Project repository
 
-| File | What it is |
-|---|---|
-| `disease_warehouse_colab.ipynb` | The notebook — open this in Colab |
-| `datamining_project.zip` | Project code + 7 raw CSV datasets (uploaded in cell 5) |
-| `INSTRUCTIONS_FOR_PROFESSOR.md` | This file |
+All code, data, and the notebook live at:
+**https://github.com/MhmdSaker/disease-warehouse-demo**
+
+You can browse the engine source under `disease_warehouse/core/`, the YAML
+profiles under `disease_warehouse/profiles/`, and the raw CSVs under
+`datasets/`.

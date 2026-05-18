@@ -56,45 +56,24 @@ actually missing.
 > once, then continue from cell 2 below. You only need to do this once.
 """),
 
-        md("""## 2. Upload the project code
+        md("""## 2. Clone the project from GitHub
 
-Two options — pick one:
-
-- **Option A (one-shot)** — upload the project as a `.zip` (right-click the project folder on your machine → Send to → Compressed folder), then run the cell below.
-- **Option B (persistent)** — place the project folder on your Google Drive and mount it with the second cell.
+Pulls the entire project (engine code, 7 disease profiles, raw CSVs) into
+Colab in one shot. No manual upload, no Drive mount.
 """),
 
-        code("""# ── OPTION A: upload datamining_project.zip from your computer ──────────
-import os, zipfile
-from google.colab import files
+        code("""import os
+REPO_URL = 'https://github.com/MhmdSaker/disease-warehouse-demo.git'
+PROJECT_DIR = '/content/disease-warehouse-demo'
 
-uploaded = files.upload()
-zip_name = next(iter(uploaded.keys()))
-with zipfile.ZipFile(zip_name) as zf:
-    zf.extractall('/content/')
+if not os.path.exists(PROJECT_DIR):
+    !git clone --depth 1 {REPO_URL} {PROJECT_DIR}
+else:
+    !cd {PROJECT_DIR} && git pull --ff-only
 
-# Locate project root (the folder containing disease_warehouse/)
-PROJECT_DIR = None
-for root, dirs, _ in os.walk('/content'):
-    if 'disease_warehouse' in dirs and 'datasets' in dirs:
-        PROJECT_DIR = root
-        break
-
-assert PROJECT_DIR, "Could not locate project root after unzip"
 os.chdir(PROJECT_DIR)
 print('Project root:', PROJECT_DIR)
 !ls
-"""),
-
-        code("""# ── OPTION B (alternative): mount Google Drive ──────────────────────────
-# Uncomment if your project lives on Drive instead of being uploaded as a zip.
-# from google.colab import drive
-# drive.mount('/content/drive')
-# import os
-# PROJECT_DIR = '/content/drive/MyDrive/datamining_project-main'
-# os.chdir(PROJECT_DIR)
-# print('Project root:', PROJECT_DIR)
-# !ls
 """),
 
         md("""## 3. Configure `GEMINI_API_KEY` for LLM enrichment
