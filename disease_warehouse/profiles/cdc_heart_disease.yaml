@@ -1,0 +1,150 @@
+name: cdc_heart_disease
+display_name: CDC Heart Disease Indicators (BRFSS 2015)
+domain: cardiovascular
+description: |
+  Heart-disease companion to cdc_diabetes — same BRFSS 2015 source, 253,680
+  respondents, but the target here is HeartDiseaseorAttack (coronary heart
+  disease or myocardial infarction). Substituted for the originally-requested
+  2022 indicators since the 2022 file is only on Kaggle behind auth; the
+  2015 schema is identical in structure. Note: this dataset has a Diabetes
+  feature (0/1/2 = no/prediabetes/diabetes) which we keep as ordinal.
+
+source:
+  path: datasets/heart_disease_brfss2015.csv
+  format: csv
+
+target:
+  column: HeartDiseaseorAttack
+  rename_to: label
+  positive_value: 1
+  negative_value: 0
+  positive_int: 1
+  negative_int: 0
+
+columns:
+  - source: HeartDiseaseorAttack
+    type: binary
+    description: Coronary heart disease or myocardial infarction. Engine-managed target.
+  - source: HighBP
+    role: comorbidity
+    type: binary
+    description: Self-reported high blood pressure.
+  - source: HighChol
+    role: comorbidity
+    type: binary
+    description: Self-reported high cholesterol.
+  - source: CholCheck
+    role: descriptor
+    type: binary
+    description: Cholesterol check within past 5 years.
+  - source: BMI
+    role: lab
+    type: numeric
+    description: Body Mass Index (kg/m²).
+  - source: Smoker
+    role: lifestyle
+    type: binary
+    description: Smoked ≥100 cigarettes in lifetime.
+  - source: Stroke
+    role: comorbidity
+    type: binary
+    description: Self-reported stroke history.
+  - source: Diabetes
+    role: comorbidity
+    type: ordinal
+    domain: [0.0, 1.0, 2.0]
+    description: Diabetes status (0=none, 1=prediabetes/borderline, 2=diabetes).
+  - source: PhysActivity
+    role: lifestyle
+    type: binary
+    description: Physical activity in past 30 days.
+  - source: Fruits
+    role: lifestyle
+    type: binary
+    description: Fruit ≥1×/day.
+  - source: Veggies
+    role: lifestyle
+    type: binary
+    description: Vegetables ≥1×/day.
+  - source: HvyAlcoholConsump
+    role: lifestyle
+    type: binary
+    description: Heavy alcohol consumption.
+  - source: AnyHealthcare
+    role: descriptor
+    type: binary
+    description: Has any health-care coverage.
+  - source: NoDocbcCost
+    role: descriptor
+    type: binary
+    description: Could not see doctor due to cost in past 12 months.
+  - source: GenHlth
+    role: descriptor
+    type: ordinal
+    domain: [1.0, 2.0, 3.0, 4.0, 5.0]
+    description: Self-rated general health 1=excellent ... 5=poor.
+  - source: MentHlth
+    role: descriptor
+    type: numeric
+    description: Days of poor mental health in past 30 (0-30).
+  - source: PhysHlth
+    role: descriptor
+    type: numeric
+    description: Days of poor physical health in past 30 (0-30).
+  - source: DiffWalk
+    role: symptom
+    type: binary
+    description: Serious difficulty walking / climbing stairs.
+  - source: Sex
+    role: gender
+    type: binary
+    description: BRFSS Sex (0=Female, 1=Male).
+  - source: Age
+    role: age
+    type: numeric
+    description: BRFSS age-group code 1-13 mapped to age-group midpoint in years.
+    mapping:
+      1.0: 21
+      2.0: 27
+      3.0: 32
+      4.0: 37
+      5.0: 42
+      6.0: 47
+      7.0: 52
+      8.0: 57
+      9.0: 62
+      10.0: 67
+      11.0: 72
+      12.0: 77
+      13.0: 82
+  - source: Education
+    role: descriptor
+    type: ordinal
+    domain: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    description: Education level 1=lowest ... 6=college graduate.
+  - source: Income
+    role: descriptor
+    type: ordinal
+    domain: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+    description: Income bracket 1=<$10K ... 8=$75K+.
+
+cleaning:
+  strip_whitespace: false
+  drop_rows_where: []
+
+hierarchies:
+  - source_column: Age
+    new_column: age_bracket
+    bands:
+      - {label: "0-17",  upper_exclusive: 18}
+      - {label: "18-39", upper_exclusive: 40}
+      - {label: "40-59", upper_exclusive: 60}
+      - {label: "60-79", upper_exclusive: 80}
+      - {label: "80+",   upper_exclusive: .inf}
+  - source_column: BMI
+    new_column: bmi_band
+    bands:
+      - {label: "underweight", upper_exclusive: 18.5}
+      - {label: "normal",      upper_exclusive: 25}
+      - {label: "overweight",  upper_exclusive: 30}
+      - {label: "obese",       upper_exclusive: .inf}

@@ -1,0 +1,126 @@
+name: diabetes
+display_name: Diabetes Risk Screening
+domain: metabolic
+description: |
+  Early-stage diabetes risk screening collected via outpatient questionnaire
+  (UCI ML repository). Each row is one patient; the target is a Positive /
+  Negative diabetes screening outcome derived from 14 binary symptom flags
+  plus age and gender.
+
+source:
+  path: datasets/diabetes_data_upload.csv
+  format: csv
+  na_values: ["?", "", " ", "N/A", "n/a", "NA", "na", "null", "NULL", "None"]
+
+target:
+  column: class
+  rename_to: label
+  positive_value: Positive
+  negative_value: Negative
+  positive_int: 1
+  negative_int: 0
+
+columns:
+  - source: Age
+    role: age
+    type: numeric
+    description: Patient age in years.
+  - source: Gender
+    role: gender
+    type: binary
+    mapping: {Male: 1, Female: 0}
+    description: Patient gender (Male=1, Female=0).
+  - source: Polyuria
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Excessive urination — classic osmotic-diuresis symptom of diabetes.
+  - source: Polydipsia
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Excessive thirst, typically secondary to polyuria.
+  - source: sudden weight loss
+    fact_column: sudden_weight_loss
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Unintentional rapid weight loss.
+  - source: weakness
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Generalised fatigue / weakness reported by the patient.
+  - source: Polyphagia
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Excessive hunger.
+  - source: Genital thrush
+    fact_column: genital_thrush
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Candidal genital infection associated with glucosuria.
+  - source: visual blurring
+    fact_column: visual_blurring
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Transient blurred vision.
+  - source: Itching
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Generalised pruritus.
+  - source: Irritability
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Mood lability / irritability.
+  - source: delayed healing
+    fact_column: delayed_healing
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Slow wound healing.
+  - source: partial paresis
+    fact_column: partial_paresis
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Partial muscle weakness (e.g. diabetic amyotrophy).
+  - source: muscle stiffness
+    fact_column: muscle_stiffness
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Reported muscle stiffness.
+  - source: Alopecia
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Hair loss.
+  - source: Obesity
+    role: symptom
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Self-reported obesity flag.
+  - source: class
+    type: binary
+    mapping: {Positive: 1, Negative: 0}
+    description: Diabetes screening outcome — engine-managed target column.
+
+cleaning:
+  strip_whitespace: true
+  drop_rows_where: []
+
+hierarchies:
+  - source_column: Age
+    new_column: age_bracket
+    bands:
+      - {label: "0-17",  upper_exclusive: 18}
+      - {label: "18-39", upper_exclusive: 40}
+      - {label: "40-59", upper_exclusive: 60}
+      - {label: "60-79", upper_exclusive: 80}
+      - {label: "80+",   upper_exclusive: .inf}

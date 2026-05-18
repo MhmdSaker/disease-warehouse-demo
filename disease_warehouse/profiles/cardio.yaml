@@ -1,0 +1,104 @@
+name: cardio
+display_name: Cardiovascular Disease (Ulianova / Kaggle)
+domain: cardiovascular
+description: |
+  Population cardiovascular-disease prediction dataset (70,000 patients).
+  Source: Kaggle sulianova/cardiovascular-disease-dataset (mirrored on
+  github.com/caravanuden/cardio). Features include age (originally in days,
+  converted here to years via scale_factor), height, weight, blood pressure
+  (systolic/diastolic), cholesterol/glucose tiers, and lifestyle flags.
+  The source uses ';' as its delimiter — declared via source.delimiter.
+
+source:
+  path: datasets/cardio_train.csv
+  format: csv
+  delimiter: ";"
+
+target:
+  column: cardio
+  rename_to: label
+  positive_value: 1
+  negative_value: 0
+  positive_int: 1
+  negative_int: 0
+
+columns:
+  - source: id
+    type: identifier
+    description: Source-side patient identifier — dropped, replaced by warehouse surrogate.
+    drop: true
+  - source: age
+    role: age
+    type: numeric
+    description: Patient age, converted from raw days to years via scale_factor 1/365.25.
+    scale_factor: 0.0027378507871321013
+  - source: gender
+    role: gender
+    type: binary
+    description: Patient gender (source 1=Female, 2=Male; mapped to engine convention 0=Female, 1=Male).
+    mapping:
+      1: 0
+      2: 1
+  - source: height
+    role: lab
+    type: numeric
+    description: Patient height in centimetres.
+  - source: weight
+    role: lab
+    type: numeric
+    description: Patient weight in kilograms.
+  - source: ap_hi
+    role: lab
+    type: numeric
+    description: Systolic blood pressure (mm Hg).
+  - source: ap_lo
+    role: lab
+    type: numeric
+    description: Diastolic blood pressure (mm Hg).
+  - source: cholesterol
+    role: lab
+    type: ordinal
+    domain: [1, 2, 3]
+    description: Cholesterol tier 1=normal, 2=above normal, 3=well above normal.
+  - source: gluc
+    role: lab
+    type: ordinal
+    domain: [1, 2, 3]
+    description: Glucose tier 1=normal, 2=above normal, 3=well above normal.
+  - source: smoke
+    role: lifestyle
+    type: binary
+    description: Patient is a smoker.
+  - source: alco
+    role: lifestyle
+    type: binary
+    description: Patient consumes alcohol.
+  - source: active
+    role: lifestyle
+    type: binary
+    description: Patient is physically active.
+  - source: cardio
+    type: binary
+    description: Cardiovascular disease outcome. Engine-managed target.
+
+cleaning:
+  strip_whitespace: false
+  drop_rows_where: []
+
+hierarchies:
+  - source_column: age
+    new_column: age_bracket
+    bands:
+      - {label: "0-17",  upper_exclusive: 18}
+      - {label: "18-39", upper_exclusive: 40}
+      - {label: "40-59", upper_exclusive: 60}
+      - {label: "60-79", upper_exclusive: 80}
+      - {label: "80+",   upper_exclusive: .inf}
+  - source_column: ap_hi
+    new_column: bp_band
+    bands:
+      - {label: "normal",      upper_exclusive: 120}
+      - {label: "elevated",    upper_exclusive: 130}
+      - {label: "stage-1-htn", upper_exclusive: 140}
+      - {label: "stage-2-htn", upper_exclusive: 180}
+      - {label: "crisis",      upper_exclusive: .inf}

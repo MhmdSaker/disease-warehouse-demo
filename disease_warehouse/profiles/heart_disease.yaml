@@ -1,0 +1,118 @@
+name: heart_disease
+display_name: Coronary Heart Disease (UCI Cleveland)
+domain: cardiovascular
+description: |
+  UCI Heart Disease — processed Cleveland subset (303 patients, 14 attributes).
+  Source: https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data
+  Raw target `num` is 0–4 severity (0 = no disease, 1–4 = disease at different
+  vessel-narrowing severities). Binarized in-warehouse to label ∈ {0, 1} so it
+  joins the same conformed dimensions as diabetes and stroke. Two source
+  columns ('ca', 'thal') contain a handful of '?' missing markers — imputed
+  by median within this profile.
+
+source:
+  path: datasets/heart_disease_cleveland.csv
+  format: csv
+  na_values: ["?", "", " ", "N/A", "n/a", "NA", "na", "null", "NULL", "None"]
+
+target:
+  column: num
+  rename_to: label
+  positive_value: 1
+  negative_value: 0
+  positive_int: 1
+  negative_int: 0
+
+columns:
+  - source: age
+    role: age
+    type: numeric
+    description: Patient age in years.
+  - source: sex
+    role: gender
+    type: binary
+    description: Patient sex (1 = Male, 0 = Female). Already numeric in source.
+  - source: cp
+    role: symptom
+    type: nominal
+    domain: [1.0, 2.0, 3.0, 4.0]
+    description: Chest pain type — 1=typical angina, 2=atypical, 3=non-anginal, 4=asymptomatic.
+  - source: trestbps
+    role: lab
+    type: numeric
+    description: Resting blood pressure (mm Hg) measured on admission.
+  - source: chol
+    role: lab
+    type: numeric
+    description: Serum cholesterol (mg/dL).
+  - source: fbs
+    role: lab
+    type: binary
+    description: Fasting blood sugar > 120 mg/dL (1 = true, 0 = false).
+  - source: restecg
+    role: lab
+    type: nominal
+    domain: [0.0, 1.0, 2.0]
+    description: Resting ECG — 0=normal, 1=ST-T abnormality, 2=LV hypertrophy by Estes criteria.
+  - source: thalach
+    role: lab
+    type: numeric
+    description: Maximum heart rate achieved during exercise stress test.
+  - source: exang
+    role: symptom
+    type: binary
+    description: Exercise-induced angina (1 = yes, 0 = no).
+  - source: oldpeak
+    role: lab
+    type: numeric
+    description: ST depression induced by exercise relative to rest.
+  - source: slope
+    role: lab
+    type: ordinal
+    domain: [1.0, 2.0, 3.0]
+    description: Slope of peak exercise ST segment — 1=upsloping, 2=flat, 3=downsloping.
+  - source: ca
+    role: lab
+    type: numeric
+    description: Number of major vessels (0–3) colored by fluoroscopy. Median-imputed for 4 missing rows.
+    imputation:
+      strategy: median
+  - source: thal
+    role: lab
+    type: nominal
+    domain: [3.0, 6.0, 7.0]
+    description: Thallium stress test result — 3=normal, 6=fixed defect, 7=reversible defect. Median-imputed for 2 missing rows.
+    imputation:
+      strategy: median
+  - source: num
+    type: binary
+    mapping: {0: 0, 1: 1, 2: 1, 3: 1, 4: 1}
+    description: Heart disease severity (0=none, 1–4=disease). Binarized to 0/1 for the warehouse label.
+
+cleaning:
+  strip_whitespace: true
+  drop_rows_where: []
+
+hierarchies:
+  - source_column: age
+    new_column: age_bracket
+    bands:
+      - {label: "0-17",  upper_exclusive: 18}
+      - {label: "18-39", upper_exclusive: 40}
+      - {label: "40-59", upper_exclusive: 60}
+      - {label: "60-79", upper_exclusive: 80}
+      - {label: "80+",   upper_exclusive: .inf}
+  - source_column: chol
+    new_column: chol_band
+    bands:
+      - {label: "desirable",  upper_exclusive: 200}
+      - {label: "borderline", upper_exclusive: 240}
+      - {label: "high",       upper_exclusive: .inf}
+  - source_column: trestbps
+    new_column: bp_band
+    bands:
+      - {label: "normal",      upper_exclusive: 120}
+      - {label: "elevated",    upper_exclusive: 130}
+      - {label: "stage-1-htn", upper_exclusive: 140}
+      - {label: "stage-2-htn", upper_exclusive: 180}
+      - {label: "crisis",      upper_exclusive: .inf}

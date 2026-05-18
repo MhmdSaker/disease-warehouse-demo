@@ -1,0 +1,37 @@
+# =============================================================================
+# Requirements — Early Disease Prediction Using Healthcare Data Warehouse
+# Python 3.9+
+# Install: pip install -r requirements.txt
+# =============================================================================
+
+# ── Core data manipulation ────────────────────────────────────────────────────
+numpy==1.26.4
+pandas==2.1.4
+
+# ── Visualisation ─────────────────────────────────────────────────────────────
+matplotlib==3.7.5
+seaborn==0.13.2
+
+# ── Machine learning ──────────────────────────────────────────────────────────
+scikit-learn==1.4.2
+xgboost==2.1.4
+lightgbm==4.6.0
+imbalanced-learn==0.12.4
+
+# ── Statistical tests ─────────────────────────────────────────────────────────
+scipy==1.11.4
+
+# ── Model persistence ─────────────────────────────────────────────────────────
+joblib==1.3.2
+
+# ── Warehouse engine (disease_warehouse/) ─────────────────────────────────────
+pyyaml>=6.0
+pyarrow>=14.0
+google-generativeai>=0.8.0   # optional: LLM enrichment for low-confidence scaffold columns (requires GEMINI_API_KEY)
+python-dotenv>=1.0.0         # loads GEMINI_API_KEY (and similar) from a local .env file
+
+# ── Jupyter notebook ecosystem ────────────────────────────────────────────────
+notebook>=7.0.0
+nbformat==5.10.4
+nbconvert>=7.0.0
+ipykernel==6.29.5

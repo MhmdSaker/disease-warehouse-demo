@@ -1,0 +1,117 @@
+name: stroke
+display_name: Stroke Risk Prediction
+domain: cardiovascular
+description: |
+  Population stroke-risk dataset (Kaggle "healthcare-dataset-stroke-data").
+  Each row is one patient with demographics, comorbidities, lifestyle, and a
+  binary stroke outcome. The original source includes 201 missing BMI values
+  (imputed by age-bracket median) and a single sparse gender='Other' row
+  (documented and removed before warehouse load).
+
+source:
+  path: datasets/healthcare-dataset-stroke-data.csv
+  format: csv
+  na_values: ["?", "", " ", "N/A", "n/a", "NA", "na", "null", "NULL", "None"]
+
+target:
+  column: stroke
+  rename_to: label
+  positive_int: 1
+  negative_int: 0
+
+columns:
+  - source: id
+    type: identifier
+    description: Source-side patient identifier — dropped, replaced by warehouse surrogate.
+    drop: true
+  - source: age
+    role: age
+    type: numeric
+    description: Patient age in years (float).
+  - source: gender
+    role: gender
+    type: binary
+    mapping: {Male: 1, Female: 0}
+    description: Patient gender (Male=1, Female=0). The single 'Other' row is removed during cleaning.
+  - source: hypertension
+    role: comorbidity
+    type: binary
+    description: Hypertension flag.
+  - source: heart_disease
+    role: comorbidity
+    type: binary
+    description: Heart disease flag.
+  - source: ever_married
+    role: descriptor
+    type: binary
+    mapping: {Yes: 1, No: 0}
+    description: Patient has been married at least once.
+  - source: work_type
+    role: lifestyle
+    type: nominal
+    domain: [Private, Self-employed, Govt_job, children, Never_worked]
+    description: Occupation category.
+  - source: Residence_type
+    fact_column: residence_type
+    role: geography
+    type: binary
+    mapping: {Urban: 1, Rural: 0}
+    description: Urban vs Rural residence (Urban=1, Rural=0).
+  - source: avg_glucose_level
+    role: lab
+    type: numeric
+    description: Average glucose level (mg/dL).
+  - source: bmi
+    role: lab
+    type: numeric
+    description: Body Mass Index (kg/m²); 201 raw nulls imputed by age-bracket median.
+    imputation:
+      strategy: grouped_median
+      group_bands:
+        - {label: "0-18",  upper_exclusive: 18.0}
+        - {label: "19-40", upper_exclusive: 40.0}
+        - {label: "41-60", upper_exclusive: 60.0}
+        - {label: "61-80", upper_exclusive: 80.0}
+        - {label: "81+",   upper_exclusive: .inf}
+      group_source_column: age
+      fallback: global_median
+  - source: smoking_status
+    role: lifestyle
+    type: nominal
+    domain: [formerly smoked, never smoked, smokes, Unknown]
+    description: Smoking status (includes 'Unknown' as a documented level).
+  - source: stroke
+    type: binary
+    description: Stroke outcome — engine-managed target column.
+
+cleaning:
+  strip_whitespace: true
+  drop_rows_where:
+    - column: gender
+      operator: equals
+      value: Other
+      ci: true
+      note: "sparse gender='Other' row documented and removed (only 1 row)"
+
+hierarchies:
+  - source_column: age
+    new_column: age_bracket
+    bands:
+      - {label: "0-17",  upper_exclusive: 18}
+      - {label: "18-39", upper_exclusive: 40}
+      - {label: "40-59", upper_exclusive: 60}
+      - {label: "60-79", upper_exclusive: 80}
+      - {label: "80+",   upper_exclusive: .inf}
+  - source_column: avg_glucose_level
+    new_column: glucose_band
+    bands:
+      - {label: "normal",         upper_exclusive: 100}
+      - {label: "elevated",       upper_exclusive: 126}
+      - {label: "diabetic-range", upper_exclusive: .inf}
+  - source_column: bmi
+    new_column: bmi_band
+    bands:
+      - {label: "underweight", upper_exclusive: 18.5}
+      - {label: "normal",      upper_exclusive: 25}
+      - {label: "overweight",  upper_exclusive: 30}
+      - {label: "obese",       upper_exclusive: .inf}

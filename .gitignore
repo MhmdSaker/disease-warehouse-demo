@@ -1,0 +1,56 @@
+# ── Secrets ──────────────────────────────────────────────────────────────
+.env
+.env.local
+*.key
+
+# ── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ── Generated warehouse artefacts ────────────────────────────────────────
+disease_warehouse/outputs/gold.db
+disease_warehouse/outputs/parquet/
+disease_warehouse/outputs/cleaned/
+disease_warehouse/outputs/.llm_cache.json
+
+# ── OS ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Excluded from the GitHub deliverable (kept locally) ──────────────────
+# These belong to the legacy pipeline or are local-only experiments.
+# The disease_warehouse demo repo intentionally ships a focused subset.
+.claude/
+00_PRESENTATION_READY/
+archive_old_scope/
+data_layers/
+eda/
+models/
+presentation_readiness/
+reports/
+warehouse/
+etl_pipeline/
+final_check.py
+*.ipynb
+!disease_warehouse_colab.ipynb
+
+# ── Scratch / non-canonical profiles (only canonical 7 ship) ─────────────
+disease_warehouse/profiles/HEART_DISEASE_CLEVE.yaml
+disease_warehouse/profiles/cardiooo.yaml
+disease_warehouse/profiles/cdcc.yaml
+disease_warehouse/profiles/hdsd.yaml
+disease_warehouse/profiles/kiidd.yaml
+disease_warehouse/profiles/ind.yaml
+disease_warehouse/profiles/indian.yaml
+disease_warehouse/profiles/cirrhosis.yaml
+disease_warehouse/profiles/parkinsons_llm.yaml
+disease_warehouse/profiles/synth_llm.yaml
+disease_warehouse/profiles/maternal_health.yaml
+disease_warehouse/profiles/synth_*.yaml
+datasets/synthetic_tough.csv
+datasets/cirrhosis.csv
+datasets/parkinsons.csv
