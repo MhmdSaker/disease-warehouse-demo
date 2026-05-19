@@ -79,11 +79,11 @@ enrichment — then diff the two YAML outputs:
 ```bash
 # 1. BASELINE — heuristics only, no API call
 !python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
-    --name maternal_baseline --no-llm --force
+    --name maternal_baseline --slm off --force
 
 # 2. WITH GEMINI — same input, LLM fills the LOW-confidence gaps
 !python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
-    --name maternal_llm --use-llm --force
+    --name maternal_llm --slm cloud --force
 ```
 
 Compare the two reports — look at the `decisions: HIGH=.. MEDIUM=.. LOW=..`
@@ -103,6 +103,29 @@ Finally, build whichever profile you prefer into the warehouse:
 # Build the LLM-enriched version
 !python -X utf8 -m disease_warehouse build --profile maternal_llm
 ```
+
+### Offline / private alternative: local SLM via ollama
+
+The same flow works with a local model — no Google API key, no network
+egress. Install [ollama](https://ollama.com), pull a model, then point
+the scaffold command at it. Three preset tiers:
+
+```bash
+# After `ollama pull phi3.5` (~2.3 GB) — the default sweet spot
+!python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
+    --name maternal_phi --slm small --privacy strict --force
+
+# After `ollama pull qwen2.5:1.5b` (~1 GB) — for low-end CPU
+!python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
+    --name maternal_qwen --slm tiny --privacy strict --force
+
+# After `ollama pull biomistral:7b` (~4.5 GB) — biomedical-tuned
+!python -X utf8 -m disease_warehouse scaffold datasets/maternal_health_risk.csv \
+    --name maternal_bio --slm small-bio --privacy strict --force
+```
+
+`--privacy strict` guarantees no cloud egress; `--privacy balanced` lets
+Gemini handle anything the local model marked LOW (best of both).
 
 ### Onboard ANY other CSV (your own data, a Kaggle download, anything)
 

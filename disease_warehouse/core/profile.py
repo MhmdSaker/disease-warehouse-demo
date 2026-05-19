@@ -40,6 +40,28 @@ from typing import Any
 import yaml
 
 
+class _ClinicalSafeLoader(yaml.SafeLoader):
+    """SafeLoader that uses YAML 1.2 boolean semantics.
+
+    PyYAML defaults to YAML 1.1, where ``yes``, ``no``, ``on``, ``off`` (and
+    their cased variants) parse as bool. That silently turns clinical mappings
+    like ``{Yes: 1, No: 0}`` into ``{True: 1, False: 0}`` — they then never
+    match the actual ``'Yes'/'No'`` strings in the data, and every mapped cell
+    falls through to NULL. We strip those four tokens from the bool resolver
+    so only ``true``/``false`` keep their YAML 1.2 boolean meaning.
+    """
+
+
+_BOOL_TAG = "tag:yaml.org,2002:bool"
+for _ch in ("y", "Y", "n", "N", "o", "O"):
+    if _ch in _ClinicalSafeLoader.yaml_implicit_resolvers:
+        _ClinicalSafeLoader.yaml_implicit_resolvers[_ch] = [
+            (tag, regexp)
+            for tag, regexp in _ClinicalSafeLoader.yaml_implicit_resolvers[_ch]
+            if tag != _BOOL_TAG
+        ]
+
+
 VALID_ATTRIBUTE_TYPES = {"numeric", "binary", "nominal", "ordinal", "identifier"}
 VALID_ROLES = {
     "age",
@@ -93,6 +115,16 @@ class ColumnSpec:
                 f"Column {self.source!r}: invalid role {self.role!r}; "
                 f"expected one of {sorted(VALID_ROLES)}"
             )
+        # Defensive: even with the clinical-safe loader, if a profile is loaded
+        # by some other path with a bool-coerced mapping ({True: 1, False: 0}),
+        # restore the Yes/No string keys so .replace() matches the source data.
+        if self.mapping:
+            restored: dict[Any, Any] = {}
+            for k, v in self.mapping.items():
+                if isinstance(k, bool):
+                    k = "Yes" if k else "No"
+                restored[k] = v
+            self.mapping = restored
 
 
 @dataclass
@@ -203,7 +235,7 @@ def _parse_drop_rule(raw: dict[str, Any]) -> DropRule:
 def load_profile(path: str | Path) -> DatasetProfile:
     path = Path(path)
     with path.open("r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh)
+        data = yaml.load(fh, Loader=_ClinicalSafeLoader)
 
     if not isinstance(data, dict):
         raise ValueError(f"{path}: profile must be a YAML mapping at the top level")

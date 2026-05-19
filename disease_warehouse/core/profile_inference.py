@@ -385,6 +385,7 @@ class Decision:
     value: Any
     confidence: str      # HIGH / MEDIUM / LOW
     reason: str
+    provider: str = ""   # set when a provider (embedding/ollama/gemini) filled this field
 
     def is_review(self) -> bool:
         return self.confidence == LOW
@@ -684,18 +685,32 @@ def infer_profile(
     name: str | None = None,
     target: str | None = None,
     source_path_for_yaml: str | None = None,
-    use_llm: bool = False,
+    use_llm: bool | None = False,
     llm_cache_dir: Path | None = None,
+    slm_preset: str = "auto",
+    privacy_mode: str = "balanced",
+    slm_model_override: str | None = None,
+    disable_embedding: bool = False,
 ) -> InferenceResult:
     """Auto-generate a profile dict from a raw CSV.
 
     Parameters
     ----------
     use_llm
-        When ``True``, columns still tagged LOW-confidence after the
-        deterministic pass are sent to Gemini for role/description suggestions.
-        Requires ``GEMINI_API_KEY`` in the environment and the
-        ``google-generativeai`` package; silently no-ops if either is missing.
+        Back-compat switch. When ``True``, treated as ``slm_preset="cloud"``
+        + ``privacy_mode="cloud-only"``. When ``False``, treated as
+        ``slm_preset="off"``. When the caller already supplies an explicit
+        ``slm_preset``/``privacy_mode``, those win.
+    slm_preset
+        One of the names registered in :mod:`slm_catalog` (``off``,
+        ``embed-only``, ``tiny``, ``small``, ``small-bio``, ``mid``,
+        ``mid-bio``, ``cloud``, ``auto``). ``auto`` probes the environment.
+    privacy_mode
+        ``strict`` (no cloud), ``balanced`` (local first, cloud for residue),
+        or ``cloud-only`` (Gemini only — legacy behavior).
+    slm_model_override
+        Optional concrete model id to pass to the active backend (overrides
+        the preset's default — e.g. a custom ollama tag).
     llm_cache_dir
         Directory under which ``.llm_cache.json`` lives. Defaults to the CSV's
         parent directory.
@@ -857,9 +872,19 @@ def infer_profile(
 
         profile_columns.append(entry)
 
-    # ─── LLM enrichment for remaining LOW-confidence columns ─────────────
-    if use_llm:
-        # Import lazily so the module stays usable without google-generativeai.
+    # ─── LLM/SLM enrichment for remaining LOW-confidence columns ────────
+    # Resolve back-compat: ``use_llm`` (legacy bool) maps to preset/privacy
+    # only when the caller didn't explicitly pass an ``slm_preset``.
+    effective_preset = slm_preset
+    effective_privacy = privacy_mode
+    if effective_preset == "auto" and use_llm is True:
+        effective_preset = "cloud"
+        effective_privacy = "cloud-only"
+    elif effective_preset == "auto" and use_llm is False:
+        effective_preset = "off"
+
+    if effective_preset != "off":
+        # Import lazily so the module stays usable without the SLM extras.
         from disease_warehouse.core.llm_enrich import enrich_low_confidence
 
         # Skip columns already marked drop:true — there's no point asking the
@@ -881,6 +906,10 @@ def infer_profile(
             target_col=target_col,
             csv_name=csv_path.name,
             cache_dir=cache_dir,
+            slm_preset=effective_preset,
+            privacy_mode=effective_privacy,
+            slm_model_override=slm_model_override,
+            disable_embedding=disable_embedding,
         )
         decisions.append(Decision("<file>", "llm", status, HIGH, status))
 
@@ -897,13 +926,15 @@ def infer_profile(
                 entry["role"] = sug.role
                 decisions.append(Decision(
                     col, "role", sug.role, llm_conf,
-                    f"LLM suggestion ({sug.confidence}): {sug.reason}",
+                    f"{sug.provider or 'llm'} ({sug.confidence}): {sug.reason}",
+                    provider=sug.provider,
                 ))
             if sug.description and entry.get("description", "").startswith("TODO"):
                 entry["description"] = sug.description
                 decisions.append(Decision(
                     col, "description", "llm", llm_conf,
-                    f"LLM suggestion ({sug.confidence}): {sug.reason}",
+                    f"{sug.provider or 'llm'} ({sug.confidence}): {sug.reason}",
+                    provider=sug.provider,
                 ))
             if sug.mapping and "mapping" not in entry:
                 # Only attach the mapping if every key actually appears in the
@@ -915,7 +946,8 @@ def infer_profile(
                     entry["mapping"] = clean
                     decisions.append(Decision(
                         col, "mapping", clean, llm_conf,
-                        f"LLM suggestion ({sug.confidence}): {sug.reason}",
+                        f"{sug.provider or 'llm'} ({sug.confidence}): {sug.reason}",
+                        provider=sug.provider,
                     ))
 
     # ─── Build the profile dict ───────────────────────────────────────────

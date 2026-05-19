@@ -27,8 +27,20 @@ joblib==1.3.2
 # ── Warehouse engine (disease_warehouse/) ─────────────────────────────────────
 pyyaml>=6.0
 pyarrow>=14.0
-google-generativeai>=0.8.0   # optional: LLM enrichment for low-confidence scaffold columns (requires GEMINI_API_KEY)
+google-generativeai>=0.8.0   # optional: cloud LLM (Gemini) for LOW-confidence scaffold columns (requires GEMINI_API_KEY)
 python-dotenv>=1.0.0         # loads GEMINI_API_KEY (and similar) from a local .env file
+
+# ── Optional: local SLM enrichment ────────────────────────────────────────────
+# Embedding-only role classifier (free, runs on CPU, ~130 MB model download
+# on first use). Pulls in numpy/torch via transitive deps already pinned above.
+# Uncomment to install — required for `--slm embed-only` and for the embedding
+# pre-pass that runs before any generative SLM call.
+# sentence-transformers>=2.7.0
+#
+# For local generative SLMs (--slm tiny / small / small-bio / mid / mid-bio):
+# install the ollama daemon from https://ollama.com (not a Python package) and
+# pull a model. The CLI talks to ollama over its REST API — no extra Python
+# dependency required beyond the standard library.
 
 # ── Jupyter notebook ecosystem ────────────────────────────────────────────────
 notebook>=7.0.0

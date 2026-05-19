@@ -42,6 +42,12 @@ from disease_warehouse.core.metadata import profile_dataset
 from disease_warehouse.core.profile import load_profile
 from disease_warehouse.core.profile_inference import HIGH, MEDIUM, LOW, infer_profile
 from disease_warehouse.core.registry import discover_profiles
+from disease_warehouse.core.slm_catalog import (
+    PRESET_CHOICES,
+    PRESETS,
+    PRIVACY_CHOICES,
+    resolve_preset,
+)
 from disease_warehouse.core.yaml_writer import emit_yaml
 
 
@@ -131,23 +137,40 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
     except ValueError:
         yaml_relative = csv_path.as_posix()
 
-    # LLM enrichment: ON when --use-llm is passed explicitly, OFF when --no-llm
-    # is passed, AUTO (on if GEMINI_API_KEY present) otherwise.
-    import os as _os
-    if args.use_llm is True:
-        use_llm = True
-    elif args.use_llm is False:
-        use_llm = False
-    else:
-        use_llm = bool(_os.environ.get("GEMINI_API_KEY"))
+    # Resolve preset + privacy. The new --slm / --privacy flags win when set;
+    # otherwise the back-compat --use-llm / --no-llm are translated and the
+    # final fallback is the long-standing "auto-on if GEMINI_API_KEY present"
+    # heuristic.
+    slm_preset = args.slm
+    privacy_mode = args.privacy or "balanced"
+    use_llm_legacy: bool | None = None  # only used when slm_preset is None
+
+    if slm_preset is None:
+        if args.use_llm is True:
+            slm_preset = "cloud"
+            privacy_mode = "cloud-only"
+        elif args.use_llm is False:
+            slm_preset = "off"
+        else:
+            slm_preset = "auto"
+    # If user explicitly passed --slm cloud and didn't touch --privacy,
+    # default to cloud-only so it behaves like the old --use-llm did.
+    if slm_preset == "cloud" and args.privacy is None:
+        privacy_mode = "cloud-only"
+
+    resolved_preset = resolve_preset(slm_preset, privacy_mode)
 
     result = infer_profile(
         csv_path,
         name=args.name,
         target=args.target,
         source_path_for_yaml=yaml_relative,
-        use_llm=use_llm,
+        use_llm=use_llm_legacy,
         llm_cache_dir=DEFAULT_OUTPUTS_DIR,
+        slm_preset=slm_preset,
+        privacy_mode=privacy_mode,
+        slm_model_override=args.slm_model,
+        disable_embedding=getattr(args, "slm_no_embed", False),
     )
 
     out_path = Path(args.profiles_dir) / f"{result.profile['name']}.yaml"
@@ -164,13 +187,16 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
     print(f"  delimiter      : {result.delimiter!r}")
     print(f"  target column  : {result.profile['target']['column']}")
     print(f"  output         : {out_path}")
+    print(f"  slm preset     : {slm_preset} -> {resolved_preset} "
+          f"({PRESETS[resolved_preset].model or 'no model'})")
+    print(f"  privacy mode   : {privacy_mode}")
     llm_decision = next((d for d in result.decisions if d.field == "llm"), None)
     if llm_decision:
-        print(f"  llm enrichment : {llm_decision.value}")
-    elif use_llm:
-        print(f"  llm enrichment : enabled (no LOW-confidence columns needed enrichment)")
+        print(f"  enrichment     : {llm_decision.value}")
+    elif slm_preset == "off":
+        print(f"  enrichment     : disabled")
     else:
-        print(f"  llm enrichment : disabled")
+        print(f"  enrichment     : enabled (no LOW-confidence columns needed enrichment)")
     print()
     # Effective counts: collapse multiple decisions per (column, field) to
     # the best confidence so LLM overrides reduce LOW instead of inflating HIGH.
@@ -217,11 +243,24 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
         else:
             type_field = next((d for d in effective if d.field == "type"), None)
             role_field = next((d for d in effective if d.field == "role"), None)
+            desc_field = next((d for d in effective if d.field == "description"), None)
+            map_field = next((d for d in effective if d.field == "mapping"), None)
             extras = []
             if type_field:
                 extras.append(f"type={type_field.value}")
             if role_field and role_field.value:
-                extras.append(f"role={role_field.value}")
+                role_str = f"role={role_field.value}"
+                if role_field.provider:
+                    role_str += f"[{role_field.provider}]"
+                extras.append(role_str)
+            # Mark fields that a provider filled (description / mapping) so
+            # the provenance is visible even when role came from a pattern.
+            provider_tags: list[str] = []
+            for f in (desc_field, map_field):
+                if f and f.provider and f.provider not in provider_tags:
+                    provider_tags.append(f.provider)
+            if provider_tags:
+                extras.append(f"enriched-by=[{','.join(provider_tags)}]")
             print(f"  {glyph} {col:<22} {' '.join(extras)}")
     if counts[LOW] > 0:
         print()
@@ -265,11 +304,50 @@ def main(argv: list[str] | None = None) -> int:
     p_scaffold.add_argument("--profiles-dir", default=str(DEFAULT_PROFILES_DIR))
     p_scaffold.add_argument("--root-dir", default=str(DEFAULT_ROOT_DIR))
     p_scaffold.add_argument("--force", action="store_true")
+
+    # Back-compat aliases — kept working.
     llm_group = p_scaffold.add_mutually_exclusive_group()
-    llm_group.add_argument("--use-llm", dest="use_llm", action="store_true", default=None,
-                           help="Force LLM enrichment for LOW-confidence columns (requires GEMINI_API_KEY).")
-    llm_group.add_argument("--no-llm", dest="use_llm", action="store_false",
-                           help="Disable LLM enrichment even if GEMINI_API_KEY is set.")
+    llm_group.add_argument(
+        "--use-llm", dest="use_llm", action="store_true", default=None,
+        help="Back-compat alias for --slm cloud --privacy cloud-only "
+             "(requires GEMINI_API_KEY).",
+    )
+    llm_group.add_argument(
+        "--no-llm", dest="use_llm", action="store_false",
+        help="Back-compat alias for --slm off.",
+    )
+
+    # New SLM controls
+    slm_group = p_scaffold.add_argument_group("SLM enrichment")
+    slm_group.add_argument(
+        "--slm", choices=PRESET_CHOICES, default=None,
+        help="SLM preset (default: auto — local if ollama is reachable, "
+             "else cloud if GEMINI_API_KEY set, else embed-only, else off).",
+    )
+    slm_group.add_argument(
+        "--slm-model", default=None,
+        help="Override the model id for the active backend "
+             "(e.g. 'phi3.5:mini' for ollama, or 'gemini-2.5-flash' for cloud).",
+    )
+    slm_group.add_argument(
+        "--slm-batch-size", type=int, default=40,
+        help="Max columns per inference call (default: 40).",
+    )
+    slm_group.add_argument(
+        "--slm-no-embed", dest="slm_no_embed", action="store_true",
+        help="Skip the embedding pre-pass even when sentence-transformers is "
+             "installed. Use for clean A/B benchmarks (deterministic vs "
+             "deterministic+SLM vs deterministic+embed+SLM).",
+    )
+
+    privacy_group = p_scaffold.add_argument_group("Privacy / fallback")
+    privacy_group.add_argument(
+        "--privacy", choices=PRIVACY_CHOICES, default=None,
+        help="strict = local SLM only, never cloud. "
+             "balanced = local first, cloud for residue (default). "
+             "cloud-only = legacy --use-llm behavior.",
+    )
+
     p_scaffold.set_defaults(func=cmd_scaffold)
 
     args = parser.parse_args(argv)
